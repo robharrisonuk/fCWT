@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 
 if (NOT (UNIX OR WIN32))
   message(FATAL_ERROR "unsupported target platform")
@@ -49,6 +49,12 @@ project(fCWT VERSION 1.0 DESCRIPTION "Highly optimized implementation of the Con
 # specify the C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux") 
+    SET(LINUX True)
+else()
+    SET(LINUX False)
+endif()
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
@@ -111,33 +117,70 @@ set_target_properties(${fcwt_library_target}
 
 # add the executable
 add_executable(fCWT_example ${headers} ${sources}) 
-include_directories("${PROJECT_SOURCE_DIR}/src/libwavelib")
-include_directories("${PROJECT_SOURCE_DIR}/src/fftw")
-include_directories("${PROJECT_SOURCE_DIR}/src/MEX")
 
-find_library (
-    FFTW
-    NAMES fftw3f libfftw3f # what to look for
-    HINTS "${PROJECT_SOURCE_DIR}/src/fftw" # where to look
-    NO_DEFAULT_PATH # do not search system default paths
-    REQUIRED
-)
-if(UNIX)
-	find_library (
-		FFTW_OMP
-		NAMES fftw3f_omp libfftw3f_omp # what to look for
-		HINTS "${PROJECT_SOURCE_DIR}/src/fftw" # where to look
-		NO_DEFAULT_PATH # do not search system default paths
-		REQUIRED
-	)
+if(LINUX)
+    include_directories("/usr/local/include")
+    include_directories("${PROJECT_SOURCE_DIR}/src/MEX")
+
+    find_library (
+        FFTW
+        NAMES fftw3f libfftw3f # what to look for
+        HINTS "/usr/local/lib" # where to look
+        NO_DEFAULT_PATH # do not search system default paths
+        REQUIRED
+    )
+else()
+    include_directories("${PROJECT_SOURCE_DIR}/src/libwavelib")
+    include_directories("${PROJECT_SOURCE_DIR}/src/fftw")
+    include_directories("${PROJECT_SOURCE_DIR}/src/MEX")
+
+    find_library (
+        FFTW
+        NAMES fftw3f libfftw3f # what to look for
+        HINTS "${PROJECT_SOURCE_DIR}/src/fftw" # where to look
+        NO_DEFAULT_PATH # do not search system default paths
+        REQUIRED
+    )
 endif()
-find_library (
-    WAVELIB
-    NAMES wavelib libwavelib # what to look for
-    HINTS "${PROJECT_SOURCE_DIR}/src/libwavelib" # where to look
-    NO_DEFAULT_PATH # do not search system default paths
-    REQUIRED
-)
+
+
+if(UNIX)
+    if(LINUX)
+        find_library (
+            FFTW_OMP
+            NAMES fftw3f_omp libfftw3f_omp # what to look for
+            HINTS "/usr/local/lib" # where to look
+            NO_DEFAULT_PATH # do not search system default paths
+            REQUIRED
+        )
+    else()
+        find_library (
+            FFTW_OMP
+            NAMES fftw3f_omp libfftw3f_omp # what to look for
+            HINTS "${PROJECT_SOURCE_DIR}/src/fftw" # where to look
+            NO_DEFAULT_PATH # do not search system default paths
+            REQUIRED
+        )
+    endif()
+endif()
+
+if(LINUX)
+    find_library (
+        WAVELIB
+        NAMES wavelib libwavelib # what to look for
+        HINTS "/usr/local/lib" # where to look
+        NO_DEFAULT_PATH # do not search system default paths
+        REQUIRED
+    )
+else()
+    find_library (
+        WAVELIB
+        NAMES wavelib libwavelib # what to look for
+        HINTS "${PROJECT_SOURCE_DIR}/src/libwavelib" # where to look
+        NO_DEFAULT_PATH # do not search system default paths
+        REQUIRED
+    )
+endif()
 
 # check if we found the library
 message(${PROJECT_SOURCE_DIR})
@@ -155,12 +198,12 @@ else()
 endif()
 
 if(UNIX)
-	if(FFTW_OMP)
-		target_link_libraries(fCWT_example PRIVATE ${FFTW_OMP})
-		target_link_libraries(${fcwt_library_target} PRIVATE ${FFTW_OMP})
-	else()
-		message(SEND_ERROR "Did not find lib fftw3f_omp")
-	endif()
+    if(FFTW_OMP)
+        target_link_libraries(fCWT_example PRIVATE ${FFTW_OMP})
+        target_link_libraries(${fcwt_library_target} PRIVATE ${FFTW_OMP})
+    else()
+        message(SEND_ERROR "Did not find lib fftw3f_omp")
+    endif()
 endif()
 
 if (NOT WAVELIB)
